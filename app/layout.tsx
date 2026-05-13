@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import Link from "next/link";
+import "./globals.css";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   title: "Controle de Contratos BPO",
@@ -15,10 +16,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="bg-gray-100">
-
         <header className="bg-black text-white shadow">
           <div className="mx-auto flex max-w-7xl items-center gap-4 p-4">
-
             <Link
               href="/dashboard"
               className="rounded bg-gray-800 px-4 py-2 hover:bg-gray-700"
@@ -53,14 +52,12 @@ export default function RootLayout({
             >
               Volumes
             </Link>
-
           </div>
         </header>
 
-        <main>
-          {children}
-        </main>
-
+        <AuthGuard>
+          <main>{children}</main>
+        </AuthGuard>
       </body>
     </html>
   );
