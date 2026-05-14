@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+type Cliente = { id: number; nome_empresa: string };
 
 type Contrato = {
   id: number;
   cliente_id: number;
   plano_id: number;
+  data_inicio: string;
+  valor_contratado: number;
+  quantidade_bancos: number;
+  quantidade_cartoes: number;
+  volume_financeiro_contratado: number;
+  volume_nf_contratado: number;
+  volume_pagamentos_contratado: number;
   clientes: { nome_empresa: string };
   planos: { nome: string };
 };
@@ -27,36 +36,102 @@ type FaixaAdicional = {
   valor: number;
 };
 
+type ContratoAdicional = {
+  id: number;
+  contrato_id: number;
+  adicional_id: number;
+  ativo: boolean;
+};
+
 type Volume = {
   id: number;
+  cliente_id: number;
+  contrato_id: number;
   mes_referencia: string;
   quantidade_financeiro: number;
   quantidade_nf: number;
   quantidade_pagamentos: number;
   quantidade_bancos: number;
   quantidade_cartoes: number;
+  realizou_agendamentos: boolean;
+  realizou_notas: boolean;
+  realizou_contabilidade: boolean;
   valor_calculado: number;
+  diferenca_valor: number;
+  percentual_uso: number;
   status_uso: string;
   contratos: {
+    valor_contratado: number;
+    quantidade_bancos: number;
+    quantidade_cartoes: number;
+    volume_financeiro_contratado: number;
+    volume_nf_contratado: number;
+    volume_pagamentos_contratado: number;
     clientes: { nome_empresa: string };
     planos: { nome: string };
   };
 };
 
+const meses = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
 export default function VolumesPage() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [faixasPlano, setFaixasPlano] = useState<FaixaPlano[]>([]);
   const [faixasAdicionais, setFaixasAdicionais] = useState<FaixaAdicional[]>([]);
+  const [contratoAdicionais, setContratoAdicionais] = useState<ContratoAdicional[]>([]);
   const [volumes, setVolumes] = useState<Volume[]>([]);
 
+  const [clienteId, setClienteId] = useState("");
   const [contratoId, setContratoId] = useState("");
   const [mesReferencia, setMesReferencia] = useState("");
+
   const [qtdFinanceiro, setQtdFinanceiro] = useState("");
   const [qtdNotas, setQtdNotas] = useState("");
   const [qtdPagamentos, setQtdPagamentos] = useState("");
   const [qtdBancos, setQtdBancos] = useState("");
   const [qtdCartoes, setQtdCartoes] = useState("");
-  const [enviaContabilidade, setEnviaContabilidade] = useState(false);
+
+  const [realizouNotas, setRealizouNotas] = useState(false);
+  const [realizouAgendamentos, setRealizouAgendamentos] = useState(false);
+  const [realizouContabilidade, setRealizouContabilidade] = useState(false);
+
+  const [rotina1Descricao, setRotina1Descricao] = useState("");
+  const [rotina1Valor, setRotina1Valor] = useState("");
+  const [rotina2Descricao, setRotina2Descricao] = useState("");
+  const [rotina2Valor, setRotina2Valor] = useState("");
+  const [rotina3Descricao, setRotina3Descricao] = useState("");
+  const [rotina3Valor, setRotina3Valor] = useState("");
+  const [rotina4Descricao, setRotina4Descricao] = useState("");
+  const [rotina4Valor, setRotina4Valor] = useState("");
+  const [rotina5Descricao, setRotina5Descricao] = useState("");
+  const [rotina5Valor, setRotina5Valor] = useState("");
+  const [descontoRealizado, setDescontoRealizado] = useState("");
+
+  const [anoAberto, setAnoAberto] = useState<number | null>(null);
+  const [mesAberto, setMesAberto] = useState<string | null>(null);
+
+  async function carregarClientes() {
+    const { data } = await supabase
+      .from("clientes")
+      .select("id, nome_empresa")
+      .order("nome_empresa", { ascending: true });
+
+    setClientes(data || []);
+  }
 
   async function carregarContratos() {
     const { data, error }: any = await supabase
@@ -65,9 +140,17 @@ export default function VolumesPage() {
         id,
         cliente_id,
         plano_id,
+        data_inicio,
+        valor_contratado,
+        quantidade_bancos,
+        quantidade_cartoes,
+        volume_financeiro_contratado,
+        volume_nf_contratado,
+        volume_pagamentos_contratado,
         clientes(nome_empresa),
         planos(nome)
       `)
+      .eq("status", "ativo")
       .order("id", { ascending: false });
 
     if (error) {
@@ -79,31 +162,26 @@ export default function VolumesPage() {
   }
 
   async function carregarFaixasPlano() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("plano_faixas")
       .select("*")
       .order("min_lancamentos", { ascending: true });
-
-    if (error) {
-      alert(`Erro ao carregar faixas dos planos: ${error.message}`);
-      return;
-    }
 
     setFaixasPlano(data || []);
   }
 
   async function carregarFaixasAdicionais() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("adicional_faixas")
       .select("*")
       .order("min_quantidade", { ascending: true });
 
-    if (error) {
-      alert(`Erro ao carregar faixas adicionais: ${error.message}`);
-      return;
-    }
-
     setFaixasAdicionais(data || []);
+  }
+
+  async function carregarContratoAdicionais() {
+    const { data } = await supabase.from("contrato_adicionais").select("*");
+    setContratoAdicionais(data || []);
   }
 
   async function carregarVolumes() {
@@ -111,20 +189,33 @@ export default function VolumesPage() {
       .from("volumes_mensais")
       .select(`
         id,
+        cliente_id,
+        contrato_id,
         mes_referencia,
         quantidade_financeiro,
         quantidade_nf,
         quantidade_pagamentos,
         quantidade_bancos,
         quantidade_cartoes,
+        realizou_agendamentos,
+        realizou_notas,
+        realizou_contabilidade,
         valor_calculado,
+        diferenca_valor,
+        percentual_uso,
         status_uso,
         contratos(
+          valor_contratado,
+          quantidade_bancos,
+          quantidade_cartoes,
+          volume_financeiro_contratado,
+          volume_nf_contratado,
+          volume_pagamentos_contratado,
           clientes(nome_empresa),
           planos(nome)
         )
       `)
-      .order("id", { ascending: false });
+      .order("mes_referencia", { ascending: false });
 
     if (error) {
       alert(`Erro ao carregar volumes: ${error.message}`);
@@ -134,135 +225,239 @@ export default function VolumesPage() {
     setVolumes(data || []);
   }
 
+  useEffect(() => {
+    carregarClientes();
+    carregarContratos();
+    carregarFaixasPlano();
+    carregarFaixasAdicionais();
+    carregarContratoAdicionais();
+    carregarVolumes();
+  }, []);
+
+  const contratosDoCliente = useMemo(() => {
+    return contratos.filter(
+      (contrato) => Number(contrato.cliente_id) === Number(clienteId)
+    );
+  }, [contratos, clienteId]);
+
+  const contratoSelecionado = useMemo(() => {
+    return contratos.find(
+      (contrato) => Number(contrato.id) === Number(contratoId)
+    );
+  }, [contratos, contratoId]);
+
+  const volumesDoCliente = useMemo(() => {
+    if (!clienteId) return [];
+    return volumes.filter((volume) => Number(volume.cliente_id) === Number(clienteId));
+  }, [volumes, clienteId]);
+
+  const anosDoCliente = useMemo(() => {
+    const contrato = contratoSelecionado || contratosDoCliente[0];
+    const anoInicio = contrato?.data_inicio
+      ? new Date(`${contrato.data_inicio}T00:00:00`).getFullYear()
+      : new Date().getFullYear();
+
+    const anoAtual = new Date().getFullYear();
+    const anos: number[] = [];
+
+    for (let ano = anoInicio; ano <= anoAtual; ano++) {
+      anos.push(ano);
+    }
+
+    return anos.reverse();
+  }, [contratoSelecionado, contratosDoCliente]);
+
+  function contratoTemAdicional(contratoIdAtual: number, adicionalId: number) {
+    return contratoAdicionais.some(
+      (item) =>
+        Number(item.contrato_id) === Number(contratoIdAtual) &&
+        Number(item.adicional_id) === Number(adicionalId) &&
+        item.ativo
+    );
+  }
+
   function encontrarFaixaPlano(planoId: number, quantidade: number) {
     return faixasPlano.find(
       (faixa) =>
         Number(faixa.plano_id) === Number(planoId) &&
-        Number(quantidade) >= Number(faixa.min_lancamentos) &&
-        Number(quantidade) <= Number(faixa.max_lancamentos)
+        quantidade >= Number(faixa.min_lancamentos) &&
+        quantidade <= Number(faixa.max_lancamentos)
     );
   }
 
   function encontrarFaixaAdicional(adicionalId: number, quantidade: number) {
-    if (Number(quantidade) <= 0) return null;
+    if (quantidade <= 0) return null;
 
     return faixasAdicionais.find(
       (faixa) =>
         Number(faixa.adicional_id) === Number(adicionalId) &&
-        Number(quantidade) >= Number(faixa.min_quantidade) &&
-        Number(quantidade) <= Number(faixa.max_quantidade)
+        quantidade >= Number(faixa.min_quantidade) &&
+        quantidade <= Number(faixa.max_quantidade)
     );
   }
 
-  function calcularValores() {
-    const contratoSelecionado = contratos.find(
-      (contrato) => Number(contrato.id) === Number(contratoId)
-    );
-
-    console.log("CONTRATOS:", contratos);
-console.log("CONTRATO SELECIONADO:", contratoSelecionado);
-
-    if (!contratoSelecionado) {
-      return null;
-    }
+  function calcularVolumeAtual() {
+    if (!contratoSelecionado) return null;
 
     const financeiro = Number(qtdFinanceiro || 0);
-    const notas = Number(qtdNotas || 0);
-    const pagamentos = Number(qtdPagamentos || 0);
+    const notas = realizouNotas ? Number(qtdNotas || 0) : 0;
+    const pagamentos = realizouAgendamentos ? Number(qtdPagamentos || 0) : 0;
     const bancos = Number(qtdBancos || 0);
     const cartoes = Number(qtdCartoes || 0);
 
-    const faixaPlano = encontrarFaixaPlano(
-      Number(contratoSelecionado.plano_id),
-      financeiro
-    );
-    console.log("CONTRATO ID:", contratoId);
-console.log("PLANO ID DO CONTRATO:", contratoSelecionado.plano_id);
-console.log("FINANCEIRO:", financeiro);
-console.log("FAIXAS PLANO:", faixasPlano);
-console.log("FAIXA ENCONTRADA:", faixaPlano);
-
-    const faixaPagamentos = encontrarFaixaAdicional(1, pagamentos);
-    const faixaNotas = encontrarFaixaAdicional(2, notas);
+    const faixaPlano = encontrarFaixaPlano(contratoSelecionado.plano_id, financeiro);
+    const faixaNotas = realizouNotas ? encontrarFaixaAdicional(2, notas) : null;
+    const faixaPagamentos = realizouAgendamentos
+      ? encontrarFaixaAdicional(1, pagamentos)
+      : null;
 
     const valorPlano = faixaPlano ? Number(faixaPlano.valor) : 0;
-    const valorPagamentos = faixaPagamentos ? Number(faixaPagamentos.valor) : 0;
     const valorNotas = faixaNotas ? Number(faixaNotas.valor) : 0;
+    const valorPagamentos = faixaPagamentos ? Number(faixaPagamentos.valor) : 0;
+    const valorContabilidade = realizouContabilidade ? 100 : 0;
 
-    const bancosExtras = Math.max(0, bancos - 3);
-    const cartoesExtras = Math.max(0, cartoes - 2);
+    const valorBancosExtras = Math.max(0, bancos - 3) * 50;
+    const valorCartoesExtras = Math.max(0, cartoes - 2) * 50;
 
-    const valorBancosExtras = bancosExtras * 50;
-    const valorCartoesExtras = cartoesExtras * 50;
-    const valorContabilidade = enviaContabilidade ? 100 : 0;
+    const valorRotinas =
+      Number(rotina1Valor || 0) +
+      Number(rotina2Valor || 0) +
+      Number(rotina3Valor || 0) +
+      Number(rotina4Valor || 0) +
+      Number(rotina5Valor || 0);
 
-    const total =
+    const desconto = Number(descontoRealizado || 0);
+
+    const valorCalculado = Math.max(
+      0,
       valorPlano +
-      valorPagamentos +
-      valorNotas +
-      valorBancosExtras +
-      valorCartoesExtras +
-      valorContabilidade;
+        valorNotas +
+        valorPagamentos +
+        valorContabilidade +
+        valorBancosExtras +
+        valorCartoesExtras +
+        valorRotinas -
+        desconto
+    );
 
-    let status = "calculado";
+    const valorContratado = Number(contratoSelecionado.valor_contratado || 0);
+    const diferenca = valorCalculado - valorContratado;
+
+    const percentualFinanceiro =
+      contratoSelecionado.volume_financeiro_contratado > 0
+        ? (financeiro / contratoSelecionado.volume_financeiro_contratado) * 100
+        : 0;
+
+    const percentualNotas =
+      contratoSelecionado.volume_nf_contratado > 0
+        ? (notas / contratoSelecionado.volume_nf_contratado) * 100
+        : 0;
+
+    const percentualPagamentos =
+      contratoSelecionado.volume_pagamentos_contratado > 0
+        ? (pagamentos / contratoSelecionado.volume_pagamentos_contratado) * 100
+        : 0;
+
+    const percentualBancos =
+      contratoSelecionado.quantidade_bancos > 0
+        ? (bancos / contratoSelecionado.quantidade_bancos) * 100
+        : 0;
+
+    const percentualCartoes =
+      contratoSelecionado.quantidade_cartoes > 0
+        ? (cartoes / contratoSelecionado.quantidade_cartoes) * 100
+        : 0;
+
+    const maiorPercentual = Math.max(
+      percentualFinanceiro,
+      percentualNotas,
+      percentualPagamentos,
+      percentualBancos,
+      percentualCartoes
+    );
+
+    const contratoTemNotas = contratoTemAdicional(contratoSelecionado.id, 2);
+    const contratoTemPagamentos = contratoTemAdicional(contratoSelecionado.id, 1);
+    const contratoTemContabilidade = contratoTemAdicional(contratoSelecionado.id, 3);
+
+    let status = "dentro do contratado";
+
+    if (
+      financeiro > Number(contratoSelecionado.volume_financeiro_contratado || 0) ||
+      (contratoTemNotas && notas > Number(contratoSelecionado.volume_nf_contratado || 0)) ||
+      (contratoTemPagamentos &&
+        pagamentos > Number(contratoSelecionado.volume_pagamentos_contratado || 0)) ||
+      bancos > Number(contratoSelecionado.quantidade_bancos || 0) ||
+      cartoes > Number(contratoSelecionado.quantidade_cartoes || 0) ||
+      diferenca > 0 ||
+      (realizouNotas && !contratoTemNotas) ||
+      (realizouAgendamentos && !contratoTemPagamentos) ||
+      (realizouContabilidade && !contratoTemContabilidade)
+    ) {
+      status = "ultrapassou contratado";
+    }
+
+    let erro = "";
 
     if (!faixaPlano) {
-      status = "fora da faixa";
+      erro = "Não existe faixa de preço para o volume financeiro informado.";
     }
 
-    if (pagamentos > 0 && !faixaPagamentos) {
-      status = "fora da faixa";
+    if (realizouNotas && notas > 0 && !faixaNotas) {
+      erro = "Não existe faixa de preço para as notas fiscais informadas.";
     }
 
-    if (notas > 0 && !faixaNotas) {
-      status = "fora da faixa";
+    if (realizouAgendamentos && pagamentos > 0 && !faixaPagamentos) {
+      erro = "Não existe faixa de preço para os agendamentos informados.";
     }
 
     return {
-      contratoSelecionado,
+      contrato: contratoSelecionado,
       financeiro,
       notas,
       pagamentos,
       bancos,
       cartoes,
-      faixaPlano,
-      valorPlano,
-      valorPagamentos,
-      valorNotas,
-      valorBancosExtras,
-      valorCartoesExtras,
-      valorContabilidade,
-      total,
+      valorCalculado,
+      valorContratado,
+      diferenca,
+      percentualFinanceiro,
+      percentualNotas,
+      percentualPagamentos,
+      percentualBancos,
+      percentualCartoes,
+      maiorPercentual,
+      contratoTemNotas,
+      contratoTemPagamentos,
+      contratoTemContabilidade,
       status,
+      erro,
     };
   }
 
   async function salvarVolume(e: React.FormEvent) {
     e.preventDefault();
 
-    const calculo = calcularValores();
+    const calculo = calcularVolumeAtual();
 
     if (!calculo) {
-      alert("Contrato não encontrado");
+      alert("Selecione cliente e contrato.");
       return;
     }
 
-    if (!calculo.faixaPlano) {
-      alert("Não existe faixa de preço para esse volume financeiro");
+    if (calculo.erro) {
+      alert(calculo.erro);
       return;
     }
-
-    const percentualUso =
-      (calculo.financeiro / Number(calculo.faixaPlano.max_lancamentos)) * 100;
 
     const { error } = await supabase.from("volumes_mensais").insert({
-      cliente_id: calculo.contratoSelecionado.cliente_id,
-      contrato_id: calculo.contratoSelecionado.id,
+      cliente_id: calculo.contrato.cliente_id,
+      contrato_id: calculo.contrato.id,
       mes_referencia: `${mesReferencia}-01`,
 
       quantidade_lancamentos: calculo.financeiro,
-      limite_plano: calculo.faixaPlano.max_lancamentos,
-      percentual_uso: percentualUso,
+      limite_plano: calculo.contrato.volume_financeiro_contratado,
+      percentual_uso: calculo.maiorPercentual,
       status_uso: calculo.status,
 
       quantidade_financeiro: calculo.financeiro,
@@ -270,7 +465,25 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
       quantidade_pagamentos: calculo.pagamentos,
       quantidade_bancos: calculo.bancos,
       quantidade_cartoes: calculo.cartoes,
-      valor_calculado: calculo.total,
+
+      realizou_agendamentos: realizouAgendamentos,
+      realizou_notas: realizouNotas,
+      realizou_contabilidade: realizouContabilidade,
+
+      rotina_realizada_1_descricao: rotina1Descricao,
+      rotina_realizada_1_valor: Number(rotina1Valor || 0),
+      rotina_realizada_2_descricao: rotina2Descricao,
+      rotina_realizada_2_valor: Number(rotina2Valor || 0),
+      rotina_realizada_3_descricao: rotina3Descricao,
+      rotina_realizada_3_valor: Number(rotina3Valor || 0),
+      rotina_realizada_4_descricao: rotina4Descricao,
+      rotina_realizada_4_valor: Number(rotina4Valor || 0),
+      rotina_realizada_5_descricao: rotina5Descricao,
+      rotina_realizada_5_valor: Number(rotina5Valor || 0),
+
+      desconto_realizado: Number(descontoRealizado || 0),
+      valor_calculado: calculo.valorCalculado,
+      diferenca_valor: calculo.diferenca,
     });
 
     if (error) {
@@ -278,32 +491,58 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
       return;
     }
 
-    setContratoId("");
     setMesReferencia("");
     setQtdFinanceiro("");
     setQtdNotas("");
     setQtdPagamentos("");
     setQtdBancos("");
     setQtdCartoes("");
-    setEnviaContabilidade(false);
+    setRealizouNotas(false);
+    setRealizouAgendamentos(false);
+    setRealizouContabilidade(false);
+    setRotina1Descricao("");
+    setRotina1Valor("");
+    setRotina2Descricao("");
+    setRotina2Valor("");
+    setRotina3Descricao("");
+    setRotina3Valor("");
+    setRotina4Descricao("");
+    setRotina4Valor("");
+    setRotina5Descricao("");
+    setRotina5Valor("");
+    setDescontoRealizado("");
 
     carregarVolumes();
   }
 
-  useEffect(() => {
-    carregarContratos();
-    carregarFaixasPlano();
-    carregarFaixasAdicionais();
-    carregarVolumes();
-  }, []);
+  function volumeDoMes(ano: number, mesIndex: number) {
+    const mes = String(mesIndex + 1).padStart(2, "0");
+    const prefixo = `${ano}-${mes}`;
 
-  const calculoAtual = calcularValores();
+    return volumesDoCliente.find((volume) =>
+      volume.mes_referencia.startsWith(prefixo)
+    );
+  }
+
+  function formatarMoeda(valor: number) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
+
+  function corStatus(status: string) {
+    if (status === "ultrapassou contratado") return "border-red-600 bg-red-50";
+    return "border-green-600 bg-green-50";
+  }
+
+  const calculoAtual = calcularVolumeAtual();
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
       <div className="mx-auto max-w-7xl">
         <h1 className="mb-6 text-3xl font-bold">
-          Controle de Volumes e Precificação
+          Volumes Mensais por Cliente
         </h1>
 
         <form
@@ -311,21 +550,42 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
           className="mb-8 rounded-xl bg-white p-6 shadow"
         >
           <h2 className="mb-4 text-xl font-semibold">
-            Registrar volume mensal
+            Registrar fechamento mensal
           </h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <select
               className="rounded border p-3"
+              value={clienteId}
+              onChange={(e) => {
+                setClienteId(e.target.value);
+                setContratoId("");
+                setAnoAberto(null);
+                setMesAberto(null);
+              }}
+              required
+            >
+              <option value="">Selecione o cliente</option>
+
+              {clientes.map((cliente) => (
+                <option key={cliente.id} value={cliente.id}>
+                  {cliente.nome_empresa}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="rounded border p-3"
               value={contratoId}
               onChange={(e) => setContratoId(e.target.value)}
               required
+              disabled={!clienteId}
             >
               <option value="">Selecione o contrato</option>
 
-              {contratos.map((contrato) => (
+              {contratosDoCliente.map((contrato) => (
                 <option key={contrato.id} value={contrato.id}>
-                  {contrato.clientes.nome_empresa} - {contrato.planos.nome}
+                  {contrato.planos.nome} — {formatarMoeda(contrato.valor_contratado)}
                 </option>
               ))}
             </select>
@@ -341,7 +601,7 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
             <input
               type="number"
               className="rounded border p-3"
-              placeholder="Lançamentos financeiros"
+              placeholder="Lançamentos financeiros realizados"
               value={qtdFinanceiro}
               onChange={(e) => setQtdFinanceiro(e.target.value)}
               required
@@ -350,23 +610,7 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
             <input
               type="number"
               className="rounded border p-3"
-              placeholder="Notas fiscais / boletos"
-              value={qtdNotas}
-              onChange={(e) => setQtdNotas(e.target.value)}
-            />
-
-            <input
-              type="number"
-              className="rounded border p-3"
-              placeholder="Agendamentos de pagamento"
-              value={qtdPagamentos}
-              onChange={(e) => setQtdPagamentos(e.target.value)}
-            />
-
-            <input
-              type="number"
-              className="rounded border p-3"
-              placeholder="Quantidade de bancos"
+              placeholder="Quantidade de bancos usados"
               value={qtdBancos}
               onChange={(e) => setQtdBancos(e.target.value)}
             />
@@ -374,41 +618,90 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
             <input
               type="number"
               className="rounded border p-3"
-              placeholder="Quantidade de cartões"
+              placeholder="Quantidade de cartões usados"
               value={qtdCartoes}
               onChange={(e) => setQtdCartoes(e.target.value)}
             />
-
-            <label className="flex items-center gap-2 rounded border bg-white p-3">
-              <input
-                type="checkbox"
-                checked={enviaContabilidade}
-                onChange={(e) => setEnviaContabilidade(e.target.checked)}
-              />
-              Envio para contabilidade
-            </label>
           </div>
+
+          <div className="mt-4 rounded border p-4">
+            <h3 className="mb-3 font-semibold">Serviços realizados no mês</h3>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="flex items-center gap-2 rounded border p-3">
+                <input
+                  type="checkbox"
+                  checked={realizouAgendamentos}
+                  onChange={(e) => setRealizouAgendamentos(e.target.checked)}
+                />
+                Agendamentos de pagamentos
+              </label>
+
+              <label className="flex items-center gap-2 rounded border p-3">
+                <input
+                  type="checkbox"
+                  checked={realizouNotas}
+                  onChange={(e) => setRealizouNotas(e.target.checked)}
+                />
+                Emissão de notas fiscais / boletos
+              </label>
+
+              <label className="flex items-center gap-2 rounded border p-3">
+                <input
+                  type="checkbox"
+                  checked={realizouContabilidade}
+                  onChange={(e) => setRealizouContabilidade(e.target.checked)}
+                />
+                Envio para contabilidade
+              </label>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {realizouAgendamentos && (
+                <input
+                  type="number"
+                  className="rounded border p-3"
+                  placeholder="Agendamentos realizados"
+                  value={qtdPagamentos}
+                  onChange={(e) => setQtdPagamentos(e.target.value)}
+                />
+              )}
+
+              {realizouNotas && (
+                <input
+                  type="number"
+                  className="rounded border p-3"
+                  placeholder="Notas fiscais / boletos realizados"
+                  value={qtdNotas}
+                  onChange={(e) => setQtdNotas(e.target.value)}
+                />
+              )}
+            </div>
+          </div>
+
+          <input
+            type="number"
+            step="0.01"
+            className="mt-4 w-full rounded border p-3"
+            placeholder="Desconto aplicado no mês"
+            value={descontoRealizado}
+            onChange={(e) => setDescontoRealizado(e.target.value)}
+          />
 
           {calculoAtual && (
             <div className="mt-6 rounded-xl border bg-gray-50 p-4">
               <h3 className="mb-3 text-lg font-semibold">
-                Prévia de cálculo
+                Comparativo do mês
               </h3>
 
-              <p>Plano base: R$ {calculoAtual.valorPlano.toFixed(2)}</p>
-              <p>Agendamentos: R$ {calculoAtual.valorPagamentos.toFixed(2)}</p>
-              <p>Notas fiscais: R$ {calculoAtual.valorNotas.toFixed(2)}</p>
-              <p>Bancos extras: R$ {calculoAtual.valorBancosExtras.toFixed(2)}</p>
-              <p>Cartões extras: R$ {calculoAtual.valorCartoesExtras.toFixed(2)}</p>
-              <p>Contabilidade: R$ {calculoAtual.valorContabilidade.toFixed(2)}</p>
+              <p>Valor contratado: {formatarMoeda(calculoAtual.valorContratado)}</p>
+              <p>Valor realizado: {formatarMoeda(calculoAtual.valorCalculado)}</p>
+              <p>Diferença: <strong>{formatarMoeda(calculoAtual.diferenca)}</strong></p>
+              <p>Status: <strong>{calculoAtual.status}</strong></p>
 
-              <p className="mt-3 text-xl font-bold">
-                Total calculado: R$ {calculoAtual.total.toFixed(2)}
-              </p>
-
-              {calculoAtual.status === "fora da faixa" && (
+              {calculoAtual.erro && (
                 <p className="mt-2 font-semibold text-red-600">
-                  Existe algum volume fora das faixas cadastradas.
+                  {calculoAtual.erro}
                 </p>
               )}
             </div>
@@ -418,43 +711,117 @@ console.log("FAIXA ENCONTRADA:", faixaPlano);
             type="submit"
             className="mt-4 rounded bg-black px-5 py-3 text-white"
           >
-            Salvar volume
+            Salvar fechamento mensal
           </button>
         </form>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <section className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">
-            Volumes registrados
+            Histórico por ano e mês
           </h2>
 
-          <div className="space-y-3">
-            {volumes.length === 0 && (
-              <p className="text-gray-500">
-                Nenhum volume registrado ainda.
-              </p>
-            )}
+          {!clienteId && (
+            <p className="text-gray-500">
+              Selecione um cliente acima para visualizar o histórico.
+            </p>
+          )}
 
-            {volumes.map((volume) => (
-              <div key={volume.id} className="rounded border p-4">
-                <strong>{volume.contratos.clientes.nome_empresa}</strong>
+          {clienteId && anosDoCliente.length === 0 && (
+            <p className="text-gray-500">
+              Nenhum contrato encontrado para este cliente.
+            </p>
+          )}
 
-                <p>Plano: {volume.contratos.planos.nome}</p>
-                <p>Mês: {volume.mes_referencia}</p>
-                <p>Lançamentos financeiros: {volume.quantidade_financeiro}</p>
-                <p>Notas fiscais / boletos: {volume.quantidade_nf}</p>
-                <p>Agendamentos: {volume.quantidade_pagamentos}</p>
-                <p>Bancos: {volume.quantidade_bancos}</p>
-                <p>Cartões: {volume.quantidade_cartoes}</p>
+          <div className="space-y-4">
+            {clienteId &&
+              anosDoCliente.map((ano) => (
+                <div key={ano} className="rounded border bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => setAnoAberto(anoAberto === ano ? null : ano)}
+                    className="w-full p-4 text-left text-lg font-bold"
+                  >
+                    {ano}
+                  </button>
 
-                <p className="mt-2 text-lg font-bold">
-                  Valor calculado: R$ {Number(volume.valor_calculado).toFixed(2)}
-                </p>
+                  {anoAberto === ano && (
+                    <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
+                      {meses.map((nomeMes, index) => {
+                        const chaveMes = `${ano}-${String(index + 1).padStart(2, "0")}`;
+                        const volume = volumeDoMes(ano, index);
+                        const aberto = mesAberto === chaveMes;
 
-                <p>Status: {volume.status_uso}</p>
-              </div>
-            ))}
+                        return (
+                          <div key={chaveMes} className="rounded border bg-white">
+                            <button
+                              type="button"
+                              onClick={() => setMesAberto(aberto ? null : chaveMes)}
+                              className="flex w-full items-center justify-between p-3 text-left font-semibold"
+                            >
+                              <span>{nomeMes}</span>
+                              <span>{volume ? "✅" : "⚠️"}</span>
+                            </button>
+
+                            {aberto && (
+                              <div className="border-t p-4">
+                                {!volume && (
+                                  <p className="text-sm text-gray-600">
+                                    Ainda não houve registro de histórico este mês.
+                                  </p>
+                                )}
+
+                                {volume && (
+                                  <div className={`rounded border-l-8 p-4 ${corStatus(volume.status_uso)}`}>
+                                    <p className="font-bold">
+                                      {volume.contratos.clientes.nome_empresa}
+                                    </p>
+
+                                    <p>Plano: {volume.contratos.planos.nome}</p>
+                                    <p>Mês: {volume.mes_referencia}</p>
+
+                                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                      <div className="rounded border bg-white p-3">
+                                        <strong>Contrato atual</strong>
+                                        <p>Financeiro: {volume.contratos.volume_financeiro_contratado}</p>
+                                        <p>Notas fiscais: {volume.contratos.volume_nf_contratado}</p>
+                                        <p>Agendamentos: {volume.contratos.volume_pagamentos_contratado}</p>
+                                        <p>Bancos: {volume.contratos.quantidade_bancos}</p>
+                                        <p>Cartões: {volume.contratos.quantidade_cartoes}</p>
+                                        <p>Valor: {formatarMoeda(volume.contratos.valor_contratado)}</p>
+                                      </div>
+
+                                      <div className="rounded border bg-white p-3">
+                                        <strong>Realizado no mês</strong>
+                                        <p>Financeiro: {volume.quantidade_financeiro}</p>
+                                        <p>Notas fiscais: {volume.quantidade_nf}</p>
+                                        <p>Agendamentos: {volume.quantidade_pagamentos}</p>
+                                        <p>Bancos: {volume.quantidade_bancos}</p>
+                                        <p>Cartões: {volume.quantidade_cartoes}</p>
+                                        <p>Valor: {formatarMoeda(volume.valor_calculado)}</p>
+                                      </div>
+                                    </div>
+
+                                    <p className="mt-3">
+                                      Diferença:{" "}
+                                      <strong>{formatarMoeda(volume.diferenca_valor)}</strong>
+                                    </p>
+
+                                    <p>
+                                      Status: <strong>{volume.status_uso}</strong>
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
           </div>
-        </div>
+        </section>
       </div>
     </main>
   );
