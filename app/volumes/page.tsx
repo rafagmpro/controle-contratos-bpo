@@ -16,6 +16,17 @@ type Contrato = {
   volume_financeiro_contratado: number;
   volume_nf_contratado: number;
   volume_pagamentos_contratado: number;
+  rotina_adicional_1_descricao: string;
+  rotina_adicional_1_valor: number;
+  rotina_adicional_2_descricao: string;
+  rotina_adicional_2_valor: number;
+  rotina_adicional_3_descricao: string;
+  rotina_adicional_3_valor: number;
+  rotina_adicional_4_descricao: string;
+  rotina_adicional_4_valor: number;
+  rotina_adicional_5_descricao: string;
+  rotina_adicional_5_valor: number;
+  desconto_valor: number;
   clientes: { nome_empresa: string };
   planos: { nome: string };
 };
@@ -56,17 +67,40 @@ type Volume = {
   realizou_agendamentos: boolean;
   realizou_notas: boolean;
   realizou_contabilidade: boolean;
+  rotina_realizada_1_descricao: string;
+  rotina_realizada_1_valor: number;
+  rotina_realizada_2_descricao: string;
+  rotina_realizada_2_valor: number;
+  rotina_realizada_3_descricao: string;
+  rotina_realizada_3_valor: number;
+  rotina_realizada_4_descricao: string;
+  rotina_realizada_4_valor: number;
+  rotina_realizada_5_descricao: string;
+  rotina_realizada_5_valor: number;
+  desconto_realizado: number;
   valor_calculado: number;
   diferenca_valor: number;
   percentual_uso: number;
   status_uso: string;
   contratos: {
+    plano_id: number;
     valor_contratado: number;
     quantidade_bancos: number;
     quantidade_cartoes: number;
     volume_financeiro_contratado: number;
     volume_nf_contratado: number;
     volume_pagamentos_contratado: number;
+    rotina_adicional_1_descricao: string;
+    rotina_adicional_1_valor: number;
+    rotina_adicional_2_descricao: string;
+    rotina_adicional_2_valor: number;
+    rotina_adicional_3_descricao: string;
+    rotina_adicional_3_valor: number;
+    rotina_adicional_4_descricao: string;
+    rotina_adicional_4_valor: number;
+    rotina_adicional_5_descricao: string;
+    rotina_adicional_5_valor: number;
+    desconto_valor: number;
     clientes: { nome_empresa: string };
     planos: { nome: string };
   };
@@ -119,6 +153,7 @@ export default function VolumesPage() {
   const [rotina4Valor, setRotina4Valor] = useState("");
   const [rotina5Descricao, setRotina5Descricao] = useState("");
   const [rotina5Valor, setRotina5Valor] = useState("");
+
   const [descontoRealizado, setDescontoRealizado] = useState("");
 
   const [anoAberto, setAnoAberto] = useState<number | null>(null);
@@ -147,6 +182,17 @@ export default function VolumesPage() {
         volume_financeiro_contratado,
         volume_nf_contratado,
         volume_pagamentos_contratado,
+        rotina_adicional_1_descricao,
+        rotina_adicional_1_valor,
+        rotina_adicional_2_descricao,
+        rotina_adicional_2_valor,
+        rotina_adicional_3_descricao,
+        rotina_adicional_3_valor,
+        rotina_adicional_4_descricao,
+        rotina_adicional_4_valor,
+        rotina_adicional_5_descricao,
+        rotina_adicional_5_valor,
+        desconto_valor,
         clientes(nome_empresa),
         planos(nome)
       `)
@@ -174,6 +220,7 @@ export default function VolumesPage() {
     const { data } = await supabase
       .from("adicional_faixas")
       .select("*")
+      .order("adicional_id", { ascending: true })
       .order("min_quantidade", { ascending: true });
 
     setFaixasAdicionais(data || []);
@@ -200,17 +247,40 @@ export default function VolumesPage() {
         realizou_agendamentos,
         realizou_notas,
         realizou_contabilidade,
+        rotina_realizada_1_descricao,
+        rotina_realizada_1_valor,
+        rotina_realizada_2_descricao,
+        rotina_realizada_2_valor,
+        rotina_realizada_3_descricao,
+        rotina_realizada_3_valor,
+        rotina_realizada_4_descricao,
+        rotina_realizada_4_valor,
+        rotina_realizada_5_descricao,
+        rotina_realizada_5_valor,
+        desconto_realizado,
         valor_calculado,
         diferenca_valor,
         percentual_uso,
         status_uso,
         contratos(
+          plano_id,
           valor_contratado,
           quantidade_bancos,
           quantidade_cartoes,
           volume_financeiro_contratado,
           volume_nf_contratado,
           volume_pagamentos_contratado,
+          rotina_adicional_1_descricao,
+          rotina_adicional_1_valor,
+          rotina_adicional_2_descricao,
+          rotina_adicional_2_valor,
+          rotina_adicional_3_descricao,
+          rotina_adicional_3_valor,
+          rotina_adicional_4_descricao,
+          rotina_adicional_4_valor,
+          rotina_adicional_5_descricao,
+          rotina_adicional_5_valor,
+          desconto_valor,
           clientes(nome_empresa),
           planos(nome)
         )
@@ -253,6 +323,7 @@ export default function VolumesPage() {
 
   const anosDoCliente = useMemo(() => {
     const contrato = contratoSelecionado || contratosDoCliente[0];
+
     const anoInicio = contrato?.data_inicio
       ? new Date(`${contrato.data_inicio}T00:00:00`).getFullYear()
       : new Date().getFullYear();
@@ -316,8 +387,11 @@ export default function VolumesPage() {
     const valorPagamentos = faixaPagamentos ? Number(faixaPagamentos.valor) : 0;
     const valorContabilidade = realizouContabilidade ? 100 : 0;
 
-    const valorBancosExtras = Math.max(0, bancos - 3) * 50;
-    const valorCartoesExtras = Math.max(0, cartoes - 2) * 50;
+    const bancosContratados = Number(contratoSelecionado.quantidade_bancos || 0);
+    const cartoesContratados = Number(contratoSelecionado.quantidade_cartoes || 0);
+
+    const valorBancosExtras = Math.max(0, bancos - bancosContratados) * 50;
+    const valorCartoesExtras = Math.max(0, cartoes - cartoesContratados) * 50;
 
     const valorRotinas =
       Number(rotina1Valor || 0) +
@@ -343,39 +417,6 @@ export default function VolumesPage() {
     const valorContratado = Number(contratoSelecionado.valor_contratado || 0);
     const diferenca = valorCalculado - valorContratado;
 
-    const percentualFinanceiro =
-      contratoSelecionado.volume_financeiro_contratado > 0
-        ? (financeiro / contratoSelecionado.volume_financeiro_contratado) * 100
-        : 0;
-
-    const percentualNotas =
-      contratoSelecionado.volume_nf_contratado > 0
-        ? (notas / contratoSelecionado.volume_nf_contratado) * 100
-        : 0;
-
-    const percentualPagamentos =
-      contratoSelecionado.volume_pagamentos_contratado > 0
-        ? (pagamentos / contratoSelecionado.volume_pagamentos_contratado) * 100
-        : 0;
-
-    const percentualBancos =
-      contratoSelecionado.quantidade_bancos > 0
-        ? (bancos / contratoSelecionado.quantidade_bancos) * 100
-        : 0;
-
-    const percentualCartoes =
-      contratoSelecionado.quantidade_cartoes > 0
-        ? (cartoes / contratoSelecionado.quantidade_cartoes) * 100
-        : 0;
-
-    const maiorPercentual = Math.max(
-      percentualFinanceiro,
-      percentualNotas,
-      percentualPagamentos,
-      percentualBancos,
-      percentualCartoes
-    );
-
     const contratoTemNotas = contratoTemAdicional(contratoSelecionado.id, 2);
     const contratoTemPagamentos = contratoTemAdicional(contratoSelecionado.id, 1);
     const contratoTemContabilidade = contratoTemAdicional(contratoSelecionado.id, 3);
@@ -387,8 +428,8 @@ export default function VolumesPage() {
       (contratoTemNotas && notas > Number(contratoSelecionado.volume_nf_contratado || 0)) ||
       (contratoTemPagamentos &&
         pagamentos > Number(contratoSelecionado.volume_pagamentos_contratado || 0)) ||
-      bancos > Number(contratoSelecionado.quantidade_bancos || 0) ||
-      cartoes > Number(contratoSelecionado.quantidade_cartoes || 0) ||
+      bancos > bancosContratados ||
+      cartoes > cartoesContratados ||
       diferenca > 0 ||
       (realizouNotas && !contratoTemNotas) ||
       (realizouAgendamentos && !contratoTemPagamentos) ||
@@ -421,15 +462,6 @@ export default function VolumesPage() {
       valorCalculado,
       valorContratado,
       diferenca,
-      percentualFinanceiro,
-      percentualNotas,
-      percentualPagamentos,
-      percentualBancos,
-      percentualCartoes,
-      maiorPercentual,
-      contratoTemNotas,
-      contratoTemPagamentos,
-      contratoTemContabilidade,
       status,
       erro,
     };
@@ -457,7 +489,7 @@ export default function VolumesPage() {
 
       quantidade_lancamentos: calculo.financeiro,
       limite_plano: calculo.contrato.volume_financeiro_contratado,
-      percentual_uso: calculo.maiorPercentual,
+      percentual_uso: 0,
       status_uso: calculo.status,
 
       quantidade_financeiro: calculo.financeiro,
@@ -536,6 +568,87 @@ export default function VolumesPage() {
     return "border-green-600 bg-green-50";
   }
 
+  function iconeMes(volume?: Volume) {
+    if (!volume) return "⚠️";
+    if (volume.status_uso === "ultrapassou contratado") return "❗";
+    return "✅";
+  }
+
+  function faixaFinanceiraContratada(volume: Volume) {
+    const faixa = faixasPlano.find(
+      (item) =>
+        Number(item.plano_id) === Number(volume.contratos.plano_id) &&
+        Number(item.max_lancamentos) ===
+          Number(volume.contratos.volume_financeiro_contratado)
+    );
+
+    if (!faixa) return `Até ${volume.contratos.volume_financeiro_contratado}`;
+
+    return `De ${faixa.min_lancamentos} até ${faixa.max_lancamentos}`;
+  }
+
+  function contratoTemContabilidade(volume: Volume) {
+    return contratoTemAdicional(volume.contrato_id, 3);
+  }
+
+  function contratoTemNotas(volume: Volume) {
+    return contratoTemAdicional(volume.contrato_id, 2);
+  }
+
+  function contratoTemPagamentos(volume: Volume) {
+    return contratoTemAdicional(volume.contrato_id, 1);
+  }
+
+  function faixaNotasContratada(volume: Volume) {
+    if (!contratoTemNotas(volume)) return "Não possui";
+
+    const faixa = faixasAdicionais.find(
+      (item) =>
+        Number(item.adicional_id) === 2 &&
+        Number(item.max_quantidade) ===
+          Number(volume.contratos.volume_nf_contratado)
+    );
+
+    if (!faixa) return `Até ${volume.contratos.volume_nf_contratado}`;
+
+    return `De ${faixa.min_quantidade} até ${faixa.max_quantidade}`;
+  }
+
+  function faixaAgendamentosContratada(volume: Volume) {
+    if (!contratoTemPagamentos(volume)) return "Não possui";
+
+    const faixa = faixasAdicionais.find(
+      (item) =>
+        Number(item.adicional_id) === 1 &&
+        Number(item.max_quantidade) ===
+          Number(volume.contratos.volume_pagamentos_contratado)
+    );
+
+    if (!faixa) return `Até ${volume.contratos.volume_pagamentos_contratado}`;
+
+    return `De ${faixa.min_quantidade} até ${faixa.max_quantidade}`;
+  }
+
+  function rotinasContrato(volume: Volume) {
+    return [
+      [volume.contratos.rotina_adicional_1_descricao, volume.contratos.rotina_adicional_1_valor],
+      [volume.contratos.rotina_adicional_2_descricao, volume.contratos.rotina_adicional_2_valor],
+      [volume.contratos.rotina_adicional_3_descricao, volume.contratos.rotina_adicional_3_valor],
+      [volume.contratos.rotina_adicional_4_descricao, volume.contratos.rotina_adicional_4_valor],
+      [volume.contratos.rotina_adicional_5_descricao, volume.contratos.rotina_adicional_5_valor],
+    ].filter(([descricao, valor]) => descricao || Number(valor) > 0);
+  }
+
+  function rotinasRealizadas(volume: Volume) {
+    return [
+      [volume.rotina_realizada_1_descricao, volume.rotina_realizada_1_valor],
+      [volume.rotina_realizada_2_descricao, volume.rotina_realizada_2_valor],
+      [volume.rotina_realizada_3_descricao, volume.rotina_realizada_3_valor],
+      [volume.rotina_realizada_4_descricao, volume.rotina_realizada_4_valor],
+      [volume.rotina_realizada_5_descricao, volume.rotina_realizada_5_valor],
+    ].filter(([descricao, valor]) => descricao || Number(valor) > 0);
+  }
+
   const calculoAtual = calcularVolumeAtual();
 
   return (
@@ -545,13 +658,8 @@ export default function VolumesPage() {
           Volumes Mensais por Cliente
         </h1>
 
-        <form
-          onSubmit={salvarVolume}
-          className="mb-8 rounded-xl bg-white p-6 shadow"
-        >
-          <h2 className="mb-4 text-xl font-semibold">
-            Registrar fechamento mensal
-          </h2>
+        <form onSubmit={salvarVolume} className="mb-8 rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">Registrar fechamento mensal</h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <select
@@ -566,7 +674,6 @@ export default function VolumesPage() {
               required
             >
               <option value="">Selecione o cliente</option>
-
               {clientes.map((cliente) => (
                 <option key={cliente.id} value={cliente.id}>
                   {cliente.nome_empresa}
@@ -582,7 +689,6 @@ export default function VolumesPage() {
               disabled={!clienteId}
             >
               <option value="">Selecione o contrato</option>
-
               {contratosDoCliente.map((contrato) => (
                 <option key={contrato.id} value={contrato.id}>
                   {contrato.planos.nome} — {formatarMoeda(contrato.valor_contratado)}
@@ -679,6 +785,64 @@ export default function VolumesPage() {
             </div>
           </div>
 
+          <div className="mt-4 rounded border p-4">
+            <h3 className="mb-3 font-semibold">Rotinas extras realizadas</h3>
+
+            {[1, 2, 3, 4, 5].map((numero) => {
+              const descricoes = [
+                rotina1Descricao,
+                rotina2Descricao,
+                rotina3Descricao,
+                rotina4Descricao,
+                rotina5Descricao,
+              ];
+
+              const valores = [
+                rotina1Valor,
+                rotina2Valor,
+                rotina3Valor,
+                rotina4Valor,
+                rotina5Valor,
+              ];
+
+              const setDescricoes = [
+                setRotina1Descricao,
+                setRotina2Descricao,
+                setRotina3Descricao,
+                setRotina4Descricao,
+                setRotina5Descricao,
+              ];
+
+              const setValores = [
+                setRotina1Valor,
+                setRotina2Valor,
+                setRotina3Valor,
+                setRotina4Valor,
+                setRotina5Valor,
+              ];
+
+              return (
+                <div key={numero} className="mb-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <input
+                    className="rounded border p-3"
+                    placeholder={`Descrição da rotina extra realizada ${numero}`}
+                    value={descricoes[numero - 1]}
+                    onChange={(e) => setDescricoes[numero - 1](e.target.value)}
+                  />
+
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="rounded border p-3"
+                    placeholder={`Valor da rotina extra realizada ${numero}`}
+                    value={valores[numero - 1]}
+                    onChange={(e) => setValores[numero - 1](e.target.value)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
           <input
             type="number"
             step="0.01"
@@ -690,10 +854,7 @@ export default function VolumesPage() {
 
           {calculoAtual && (
             <div className="mt-6 rounded-xl border bg-gray-50 p-4">
-              <h3 className="mb-3 text-lg font-semibold">
-                Comparativo do mês
-              </h3>
-
+              <h3 className="mb-3 text-lg font-semibold">Comparativo do mês</h3>
               <p>Valor contratado: {formatarMoeda(calculoAtual.valorContratado)}</p>
               <p>Valor realizado: {formatarMoeda(calculoAtual.valorCalculado)}</p>
               <p>Diferença: <strong>{formatarMoeda(calculoAtual.diferenca)}</strong></p>
@@ -707,28 +868,17 @@ export default function VolumesPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            className="mt-4 rounded bg-black px-5 py-3 text-white"
-          >
+          <button type="submit" className="mt-4 rounded bg-black px-5 py-3 text-white">
             Salvar fechamento mensal
           </button>
         </form>
 
         <section className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">
-            Histórico por ano e mês
-          </h2>
+          <h2 className="mb-4 text-xl font-semibold">Histórico por ano e mês</h2>
 
           {!clienteId && (
             <p className="text-gray-500">
               Selecione um cliente acima para visualizar o histórico.
-            </p>
-          )}
-
-          {clienteId && anosDoCliente.length === 0 && (
-            <p className="text-gray-500">
-              Nenhum contrato encontrado para este cliente.
             </p>
           )}
 
@@ -745,7 +895,7 @@ export default function VolumesPage() {
                   </button>
 
                   {anoAberto === ano && (
-                    <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
+                    <div className="space-y-3 p-4">
                       {meses.map((nomeMes, index) => {
                         const chaveMes = `${ano}-${String(index + 1).padStart(2, "0")}`;
                         const volume = volumeDoMes(ano, index);
@@ -756,10 +906,18 @@ export default function VolumesPage() {
                             <button
                               type="button"
                               onClick={() => setMesAberto(aberto ? null : chaveMes)}
-                              className="flex w-full items-center justify-between p-3 text-left font-semibold"
+                              className="flex w-full items-center justify-between p-4 text-left font-semibold"
                             >
                               <span>{nomeMes}</span>
-                              <span>{volume ? "✅" : "⚠️"}</span>
+                              <span
+                                className={
+                                  volume?.status_uso === "ultrapassou contratado"
+                                    ? "font-bold text-red-600"
+                                    : ""
+                                }
+                              >
+                                {iconeMes(volume)}
+                              </span>
                             </button>
 
                             {aberto && (
@@ -779,25 +937,134 @@ export default function VolumesPage() {
                                     <p>Plano: {volume.contratos.planos.nome}</p>
                                     <p>Mês: {volume.mes_referencia}</p>
 
-                                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                                      <div className="rounded border bg-white p-3">
-                                        <strong>Contrato atual</strong>
-                                        <p>Financeiro: {volume.contratos.volume_financeiro_contratado}</p>
-                                        <p>Notas fiscais: {volume.contratos.volume_nf_contratado}</p>
-                                        <p>Agendamentos: {volume.contratos.volume_pagamentos_contratado}</p>
-                                        <p>Bancos: {volume.contratos.quantidade_bancos}</p>
-                                        <p>Cartões: {volume.contratos.quantidade_cartoes}</p>
-                                        <p>Valor: {formatarMoeda(volume.contratos.valor_contratado)}</p>
+                                    <div className="mt-4 overflow-hidden rounded border bg-white">
+                                      <div className="grid grid-cols-4 bg-gray-100 p-3 font-semibold">
+                                        <div>Item</div>
+                                        <div>Contrato atual</div>
+                                        <div>Realizado no mês</div>
+                                        <div>Situação</div>
                                       </div>
 
-                                      <div className="rounded border bg-white p-3">
-                                        <strong>Realizado no mês</strong>
-                                        <p>Financeiro: {volume.quantidade_financeiro}</p>
-                                        <p>Notas fiscais: {volume.quantidade_nf}</p>
-                                        <p>Agendamentos: {volume.quantidade_pagamentos}</p>
-                                        <p>Bancos: {volume.quantidade_bancos}</p>
-                                        <p>Cartões: {volume.quantidade_cartoes}</p>
-                                        <p>Valor: {formatarMoeda(volume.valor_calculado)}</p>
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Financeiro</div>
+                                        <div>{faixaFinanceiraContratada(volume)} lançamentos</div>
+                                        <div>{volume.quantidade_financeiro} lançamentos</div>
+                                        <div>
+                                          {volume.quantidade_financeiro > volume.contratos.volume_financeiro_contratado
+                                            ? "Ultrapassou"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Notas fiscais / boletos</div>
+                                        <div>{faixaNotasContratada(volume)}</div>
+                                        <div>{volume.realizou_notas ? volume.quantidade_nf : "Não realizado"}</div>
+                                        <div>
+                                          {!contratoTemNotas(volume) && volume.realizou_notas
+                                            ? "Extra"
+                                            : volume.quantidade_nf > volume.contratos.volume_nf_contratado &&
+                                              contratoTemNotas(volume)
+                                            ? "Ultrapassou"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Agendamentos</div>
+                                        <div>{faixaAgendamentosContratada(volume)}</div>
+                                        <div>
+                                          {volume.realizou_agendamentos
+                                            ? volume.quantidade_pagamentos
+                                            : "Não realizado"}
+                                        </div>
+                                        <div>
+                                          {!contratoTemPagamentos(volume) && volume.realizou_agendamentos
+                                            ? "Extra"
+                                            : volume.quantidade_pagamentos >
+                                                volume.contratos.volume_pagamentos_contratado &&
+                                              contratoTemPagamentos(volume)
+                                            ? "Ultrapassou"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Envio para contabilidade</div>
+                                        <div>{contratoTemContabilidade(volume) ? "Sim" : "Não possui"}</div>
+                                        <div>{volume.realizou_contabilidade ? "Sim" : "Não realizado"}</div>
+                                        <div>
+                                          {!contratoTemContabilidade(volume) && volume.realizou_contabilidade
+                                            ? "Extra"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Bancos</div>
+                                        <div>{volume.contratos.quantidade_bancos}</div>
+                                        <div>{volume.quantidade_bancos}</div>
+                                        <div>
+                                          {volume.quantidade_bancos > volume.contratos.quantidade_bancos
+                                            ? "Ultrapassou"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Cartões</div>
+                                        <div>{volume.contratos.quantidade_cartoes}</div>
+                                        <div>{volume.quantidade_cartoes}</div>
+                                        <div>
+                                          {volume.quantidade_cartoes > volume.contratos.quantidade_cartoes
+                                            ? "Ultrapassou"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Rotinas extras</div>
+                                        <div>
+                                          {rotinasContrato(volume).length === 0
+                                            ? "Não possui"
+                                            : rotinasContrato(volume)
+                                                .map(
+                                                  ([descricao, valor]) =>
+                                                    `${descricao || "Rotina"} - ${formatarMoeda(Number(valor))}`
+                                                )
+                                                .join(" | ")}
+                                        </div>
+                                        <div>
+                                          {rotinasRealizadas(volume).length === 0
+                                            ? "Não realizado"
+                                            : rotinasRealizadas(volume)
+                                                .map(
+                                                  ([descricao, valor]) =>
+                                                    `${descricao || "Rotina"} - ${formatarMoeda(Number(valor))}`
+                                                )
+                                                .join(" | ")}
+                                        </div>
+                                        <div>
+                                          {rotinasRealizadas(volume).length > rotinasContrato(volume).length
+                                            ? "Extra"
+                                            : "Dentro"}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3">
+                                        <div>Desconto</div>
+                                        <div>{formatarMoeda(volume.contratos.desconto_valor)}</div>
+                                        <div>{formatarMoeda(volume.desconto_realizado)}</div>
+                                        <div>Informativo</div>
+                                      </div>
+
+                                      <div className="grid grid-cols-4 border-t p-3 font-semibold">
+                                        <div>Valor</div>
+                                        <div>{formatarMoeda(volume.contratos.valor_contratado)}</div>
+                                        <div>{formatarMoeda(volume.valor_calculado)}</div>
+                                        <div>
+                                          {volume.diferenca_valor > 0 ? "Ultrapassou" : "Dentro"}
+                                        </div>
                                       </div>
                                     </div>
 
